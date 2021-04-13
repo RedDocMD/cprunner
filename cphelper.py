@@ -41,7 +41,7 @@ class Command:
         else:
             raise ConfigError(f'Invalid variable: ${{{part}}}')
 
-    def subs(self, filename):
+    def __call__(self, filename):
         reg = re.compile(r'\$\{(\w+)\}')
         matches = reg.findall(self.command)
         if len(matches) == 0:
@@ -86,6 +86,9 @@ class Config:
             out += f"{lang}\n"
         return out
 
+    def __getitem__(self, ext):
+        return self.ext_lang_map[ext]
+
 
 class ConfigNotFound(Exception):
     pass
@@ -109,4 +112,12 @@ if __name__ == "__main__":
     runtype_group.add_argument(
         "-d", "--run-diff", help="Run the code and diff with expected output", action="store_true")
     args = parser.parse_args()
+
     config = get_config()
+    cwd = pathlib.Path.cwd()
+    filename_path = pathlib.PurePath(args.file)
+    filename_abs = (cwd/filename_path).resolve()
+
+    ext = filename_abs.suffix[1:]
+    lang = config[ext]
+    actual_command = lang.command(filename_abs)
