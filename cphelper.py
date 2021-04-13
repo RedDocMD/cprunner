@@ -16,6 +16,19 @@ def config_locations():
     return long_paths
 
 
+class ConfigNotFound(Exception):
+    pass
+
+
+def get_config():
+    locations = config_locations()
+    for location in locations:
+        if location.exists():
+            with open(location) as file:
+                return json.load(file)
+    raise ConfigNotFound()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("file", help="file you want to run")
