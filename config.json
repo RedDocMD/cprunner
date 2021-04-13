@@ -1,7 +1,7 @@
 {
     "c++": {
         "ext": ["cpp"],
-        "command": "g++ -o ${filenameWithoutExt} ${filename} && cd ${fileDir} && ./${filenameWithoutExt}"
+        "command": "g++ -o ${filenameWithoutExt} ${filename} && cd ${fileDir} && ${filenameWithoutExt}"
     },
     "python": {
         "ext": ["py"],

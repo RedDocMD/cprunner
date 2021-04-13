@@ -3,6 +3,7 @@ import argparse
 import pathlib
 import os.path
 import json
+import re
 
 
 def config_locations():
@@ -22,7 +23,35 @@ class ConfigError(Exception):
 
 
 class Command:
-    pass
+    def __init__(self, command):
+        self.command = command
+
+    def __str__(self):
+        return self.command
+
+    def _replacement(self, part, filename):
+        if part == 'filename':
+            return filename
+        elif part == 'filenameWithoutExt':
+            parent = filename.parent
+            name = pathlib.PurePath(filename.stem)
+            return parent/name
+        elif part == 'fileDir':
+            return filename.parent
+        else:
+            raise ConfigError(f'Invalid variable: ${{{part}}}')
+
+    def subs(self, filename):
+        reg = re.compile(r'\$\{(\w+)\}')
+        matches = reg.findall(self.command)
+        if len(matches) == 0:
+            return self.command
+        else:
+            final_command = self.command
+            for part in matches:
+                final_command = final_command.replace(
+                    f'${{{part}}}', str(self._replacement(part, filename)))
+            return final_command
 
 
 class Language:
@@ -42,7 +71,7 @@ class Config:
         for lang_key in json_ob:
             info = json_ob[lang_key]
             extensions = info["ext"]
-            command = info["command"]
+            command = Command(info["command"])
             language = Language(lang_key, extensions, command)
             self.languages.append(language)
             for ext in extensions:
@@ -80,3 +109,4 @@ if __name__ == "__main__":
     runtype_group.add_argument(
         "-d", "--run-diff", help="Run the code and diff with expected output", action="store_true")
     args = parser.parse_args()
+    config = get_config()
