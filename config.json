@@ -5,7 +5,7 @@
     },
     "python": {
         "ext": ["py"],
-        "command": "python ${filenameWithoutExt}"
+        "command": "python ${filename}"
     },
     "java": {
         "ext": ["java"],
