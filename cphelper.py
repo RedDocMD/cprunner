@@ -16,6 +16,48 @@ def config_locations():
     return long_paths
 
 
+class ConfigError(Exception):
+    def __init__(self, message):
+        super(message)
+
+
+class Command:
+    pass
+
+
+class Language:
+    def __init__(self, name, extensions, command):
+        self.name = name
+        self.extensions = extensions
+        self.command = command
+
+    def __str__(self):
+        return f"Language [name: {self.name}, extensions = {self.extensions}, command = {self.command}]"
+
+
+class Config:
+    def __init__(self, json_ob):
+        self.languages = []
+        self.ext_lang_map = {}
+        for lang_key in json_ob:
+            info = json_ob[lang_key]
+            extensions = info["ext"]
+            command = info["command"]
+            language = Language(lang_key, extensions, command)
+            self.languages.append(language)
+            for ext in extensions:
+                if ext in self.ext_lang_map:
+                    raise ConfigError(
+                        f"Extension \"{ext}\" assigned more than once")
+                self.ext_lang_map[ext] = language
+
+    def __str__(self):
+        out = ""
+        for lang in self.languages:
+            out += f"{lang}\n"
+        return out
+
+
 class ConfigNotFound(Exception):
     pass
 
@@ -25,7 +67,7 @@ def get_config():
     for location in locations:
         if location.exists():
             with open(location) as file:
-                return json.load(file)
+                return Config(json.load(file))
     raise ConfigNotFound()
 
 
