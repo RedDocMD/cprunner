@@ -1,0 +1,18 @@
+{
+    "c++": {
+        "ext": ["cpp"],
+        "command": "g++ -o ${filenameWithoutExt} ${filename} && cd ${fileDir} && ./${filenameWithoutExt}"
+    },
+    "python": {
+        "ext": ["py"],
+        "command": "python ${filenameWithoutExt}"
+    },
+    "java": {
+        "ext": ["java"],
+        "command": "javac ${filename} && java ${filenameWithoutExt}"
+    },
+    "golang": {
+        "ext": ["go"],
+        "command": "go run ${filename}"
+    }
+}
