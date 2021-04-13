@@ -1,10 +1,19 @@
 #!/usr/bin/env python
 import argparse
+import pathlib
+import os.path
+import json
 
 
 def config_locations():
-    short_paths = ['.cphelper.json', '.config/cphelper.json',
-                   '.config/cphelper/config.json']
+    short_path_segments = [['.cphelper.json'],
+                           ['.config', 'cphelper.json'],
+                           ['.config', 'cphelper', 'config.json']]
+    short_paths = [pathlib.PurePath(*segments)
+                   for segments in short_path_segments]
+    home = pathlib.Path.home()
+    long_paths = [home/path for path in short_paths]
+    return long_paths
 
 
 if __name__ == "__main__":
