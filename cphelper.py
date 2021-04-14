@@ -4,6 +4,9 @@ import pathlib
 import os.path
 import json
 import re
+import sys
+import subprocess
+import tempfile
 
 
 def config_locations():
@@ -103,6 +106,17 @@ def get_config():
     raise ConfigNotFound()
 
 
+def execute(command):
+    print("Enter the input:")
+    inp = sys.stdin.read()
+    inp_file = tempfile.TemporaryFile(mode='w')
+    inp_file.write(inp)
+    out_file = tempfile.TemporaryFile(mode='r+')
+    result = subprocess.run(command, stdout=out_file,
+                            stdin=inp_file, stderr=sys.stdout)
+    print(out_file.read())
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("file", help="file you want to run")
@@ -121,3 +135,5 @@ if __name__ == "__main__":
     ext = filename_abs.suffix[1:]
     lang = config[ext]
     actual_command = lang.command(filename_abs)
+
+    execute(actual_command)
