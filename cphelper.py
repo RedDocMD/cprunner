@@ -7,6 +7,7 @@ import re
 import sys
 import subprocess
 import tempfile
+import shlex
 
 
 def config_locations():
@@ -112,7 +113,7 @@ def execute(command, take_input=False):
     else:
         key_comb = 'Ctrl + D'
 
-    proc = subprocess.Popen(command, shell=True, text=True, stdin=subprocess.PIPE,
+    proc = subprocess.Popen(shlex.split(command), text=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if take_input:
@@ -140,7 +141,7 @@ if __name__ == "__main__":
     runtype_group.add_argument(
         "-r", "--run", help="Just run the code", action="store_true")
     runtype_group.add_argument(
-        "-d", "--run-diff", help="Run the code and diff with expected output", action="store_true")
+        "-d", "--run-diff", help="Run the code and diff with expected output (default)", action="store_true")
     args = parser.parse_args()
 
     config = get_config()
@@ -150,7 +151,7 @@ if __name__ == "__main__":
 
     ext = filename_abs.suffix[1:]
     lang = config[ext]
-    for (i, command)  in enumerate(lang.commands):
+    for (i, command) in enumerate(lang.commands):
         last = i == len(lang.commands) - 1
         actual_command = command(filename_abs)
         ret_code = execute(actual_command, last)
