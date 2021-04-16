@@ -8,6 +8,7 @@ import sys
 import subprocess
 import tempfile
 import shlex
+import difflib
 from termcolor import colored
 
 
@@ -108,17 +109,25 @@ def get_config():
     raise ConfigNotFound()
 
 
-def execute(command, take_input=False, diff=False):
+def key_comb():
     if sys.platform == 'win32':
-        key_comb = 'Ctrl + Z'
+        return 'Ctrl + Z'
     else:
-        key_comb = 'Ctrl + D'
+        return 'Ctrl + D'
 
+
+def perform_diff(obtained_output):
+    print(
+        colored(f'\nEnter the expected output (then hit {key_comb()}):', 'yellow'))
+    inp = sys.stdin.read()
+
+
+def execute(command, take_input=False, diff=False):
     proc = subprocess.Popen(shlex.split(command), text=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if take_input:
-        print(colored(f"Enter the input (then hit {key_comb}):", 'yellow'))
+        print(colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
         inp = sys.stdin.read()
         proc.stdin.write(inp)
 
@@ -132,6 +141,9 @@ def execute(command, take_input=False, diff=False):
         print(err)
     proc.stdin.close()
 
+    if diff:
+        perform_diff(out)
+
     return proc.returncode
 
 
@@ -140,9 +152,9 @@ if __name__ == "__main__":
     parser.add_argument("file", help="file you want to run")
     runtype_group = parser.add_mutually_exclusive_group()
     runtype_group.add_argument(
-        "-r", "--run", help="Just run the code", action="store_true")
+        "-r", "--run", help="Just run the code (default)", action="store_true")
     runtype_group.add_argument(
-        "-d", "--run-diff", help="Run the code and diff with expected output (default)", action="store_true")
+        "-d", "--diff", help="Run the code and diff with expected output", action="store_true")
     args = parser.parse_args()
 
     config = get_config()
@@ -154,7 +166,8 @@ if __name__ == "__main__":
     lang = config[ext]
     for (i, command) in enumerate(lang.commands):
         last = i == len(lang.commands) - 1
+        diff = args.diff and last
         actual_command = command(filename_abs)
-        ret_code = execute(actual_command, last)
+        ret_code = execute(actual_command, last, diff)
         if ret_code != 0:
             break
