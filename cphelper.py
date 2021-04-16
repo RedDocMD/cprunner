@@ -119,7 +119,12 @@ def key_comb():
 def perform_diff(obtained_output):
     print(
         colored(f'\nEnter the expected output (then hit {key_comb()}):', 'yellow'))
-    inp = sys.stdin.read()
+    expected_output = sys.stdin.read()
+    split_obtained = [s + '\n' for s in obtained_output.split('\n')]
+    split_expected = [s + '\n' for s in expected_output.split('\n')]
+    # print(difflib.context_diff(obtained_output, expected_output))
+    sys.stdout.writelines(difflib.context_diff(
+        split_obtained, split_expected, fromfile='obtained', tofile='expected'))
 
 
 def execute(command, take_input=False, diff=False):
