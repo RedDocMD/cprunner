@@ -7,6 +7,7 @@ import re
 import sys
 import subprocess
 import tempfile
+import shlex
 
 
 def config_locations():
@@ -107,14 +108,19 @@ def get_config():
 
 
 def execute(command):
-    print("Enter the input:")
+    if sys.platform == 'win32':
+        key_comb = 'Ctrl + Z'
+    else:
+        key_comb = 'Ctrl + D'
+    print(f"Enter the input (then hit {key_comb}):")
     inp = sys.stdin.read()
-    inp_file = tempfile.TemporaryFile(mode='w')
-    inp_file.write(inp)
-    out_file = tempfile.TemporaryFile(mode='r+')
-    result = subprocess.run(command, stdout=out_file,
-                            stdin=inp_file, stderr=sys.stdout)
-    print(out_file.read())
+    proc = subprocess.Popen(shlex.split(
+        command), text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc.stdin.write(inp)
+    out, err = proc.communicate()
+    print('\nOutput obtained:')
+    print(out, end='')
+    proc.stdin.close()
 
 
 if __name__ == "__main__":
