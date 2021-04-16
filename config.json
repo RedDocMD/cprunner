@@ -1,18 +1,18 @@
 {
     "c++": {
         "ext": ["cpp"],
-        "command": "g++ -o ${filenameWithoutExt} ${filename} && ${filenameWithoutExt}"
+        "commands": ["g++ -o ${filenameWithoutExt} ${filename}", "${filenameWithoutExt}"]
     },
     "python": {
         "ext": ["py"],
-        "command": "python3 ${filename}"
+        "commands": ["python3 ${filename}"]
     },
     "java": {
         "ext": ["java"],
-        "command": "javac ${filename} && java ${filenameWithoutExt}"
+        "commands": ["javac ${filename} && java ${filenameWithoutExt}"]
     },
     "golang": {
         "ext": ["go"],
-        "command": "go run ${filename}"
+        "commands": ["go run ${filename}"]
     }
 }

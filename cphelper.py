@@ -7,7 +7,6 @@ import re
 import sys
 import subprocess
 import tempfile
-import shlex
 
 
 def config_locations():
@@ -59,13 +58,13 @@ class Command:
 
 
 class Language:
-    def __init__(self, name, extensions, command):
+    def __init__(self, name, extensions, commands):
         self.name = name
         self.extensions = extensions
-        self.command = command
+        self.commands = commands
 
     def __str__(self):
-        return f"Language [name: {self.name}, extensions = {self.extensions}, command = {self.command}]"
+        return f"Language [name: {self.name}, extensions = {self.extensions}, commands = {self.commands}]"
 
 
 class Config:
@@ -75,8 +74,8 @@ class Config:
         for lang_key in json_ob:
             info = json_ob[lang_key]
             extensions = info["ext"]
-            command = Command(info["command"])
-            language = Language(lang_key, extensions, command)
+            commands = [Command(command) for command in info["commands"]]
+            language = Language(lang_key, extensions, commands)
             self.languages.append(language)
             for ext in extensions:
                 if ext in self.ext_lang_map:
@@ -107,20 +106,31 @@ def get_config():
     raise ConfigNotFound()
 
 
-def execute(command):
+def execute(command, take_input=False):
     if sys.platform == 'win32':
         key_comb = 'Ctrl + Z'
     else:
         key_comb = 'Ctrl + D'
-    print(f"Enter the input (then hit {key_comb}):")
-    inp = sys.stdin.read()
-    proc = subprocess.Popen(shlex.split(
-        command), text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    proc.stdin.write(inp)
+
+    proc = subprocess.Popen(command, shell=True, text=True, stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    if take_input:
+        print(f"Enter the input (then hit {key_comb}):")
+        inp = sys.stdin.read()
+        proc.stdin.write(inp)
+
     out, err = proc.communicate()
-    print('\nOutput obtained:')
-    print(out, end='')
+
+    if len(out) > 0:
+        print('\nOutput obtained:')
+        print(out, end='')
+    if len(err) > 0:
+        print('\nError obtained:')
+        print(err)
     proc.stdin.close()
+
+    return proc.returncode
 
 
 if __name__ == "__main__":
@@ -140,6 +150,9 @@ if __name__ == "__main__":
 
     ext = filename_abs.suffix[1:]
     lang = config[ext]
-    actual_command = lang.command(filename_abs)
-
-    execute(actual_command)
+    for (i, command)  in enumerate(lang.commands):
+        last = i == len(lang.commands) - 1
+        actual_command = command(filename_abs)
+        ret_code = execute(actual_command, last)
+        if ret_code != 0:
+            break
