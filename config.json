@@ -9,7 +9,7 @@
     },
     "java": {
         "ext": ["java"],
-        "commands": ["javac ${filename} && java ${filenameWithoutExt}"]
+        "commands": ["javac ${filename}", "java ${filenameWithoutExt}"]
     },
     "golang": {
         "ext": ["go"],

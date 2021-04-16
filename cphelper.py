@@ -8,6 +8,7 @@ import sys
 import subprocess
 import tempfile
 import shlex
+from termcolor import colored
 
 
 def config_locations():
@@ -107,7 +108,7 @@ def get_config():
     raise ConfigNotFound()
 
 
-def execute(command, take_input=False):
+def execute(command, take_input=False, diff=False):
     if sys.platform == 'win32':
         key_comb = 'Ctrl + Z'
     else:
@@ -117,17 +118,17 @@ def execute(command, take_input=False):
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     if take_input:
-        print(f"Enter the input (then hit {key_comb}):")
+        print(colored(f"Enter the input (then hit {key_comb}):", 'yellow'))
         inp = sys.stdin.read()
         proc.stdin.write(inp)
 
     out, err = proc.communicate()
 
     if len(out) > 0:
-        print('\nOutput obtained:')
+        print(colored('\nOutput obtained:', 'green'))
         print(out, end='')
     if len(err) > 0:
-        print('\nError obtained:')
+        print(colored('\nError obtained:', 'red'))
         print(err)
     proc.stdin.close()
 
