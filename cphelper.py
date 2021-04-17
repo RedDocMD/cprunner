@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import shlex
 import difflib
+import io
 from termcolor import colored
 
 
@@ -122,9 +123,15 @@ def perform_diff(obtained_output):
     expected_output = sys.stdin.read()
     split_obtained = [s + '\n' for s in obtained_output.split('\n')]
     split_expected = [s + '\n' for s in expected_output.split('\n')]
-    # print(difflib.context_diff(obtained_output, expected_output))
-    sys.stdout.writelines(difflib.context_diff(
+    diff_stream = io.StringIO()
+    diff_stream.writelines(difflib.context_diff(
         split_obtained, split_expected, fromfile='obtained', tofile='expected'))
+    diff_contents = diff_stream.getvalue()
+    if len(diff_contents) != 0:
+        print(colored('\nMismatch found!', 'red'))
+        print(diff_contents)
+    else:
+        print(colored('\nNo Mismatch found!', 'green'))
 
 
 def execute(command, take_input=False, diff=False):
