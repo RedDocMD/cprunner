@@ -97,6 +97,7 @@ def config_locations():
                    for segments in short_path_segments]
     home = pathlib.Path.home()
     long_paths = [home/path for path in short_paths]
+    long_paths.reverse()
     return long_paths
 
 
