@@ -1,9 +1,8 @@
-#!/usr/bin/env python
 import argparse
+import re
 import pathlib
 import os.path
 import json
-import re
 import sys
 import subprocess
 import tempfile
@@ -11,17 +10,6 @@ import shlex
 import difflib
 import io
 from termcolor import colored
-
-
-def config_locations():
-    short_path_segments = [['.cphelper.json'],
-                           ['.config', 'cphelper.json'],
-                           ['.config', 'cphelper', 'config.json']]
-    short_paths = [pathlib.PurePath(*segments)
-                   for segments in short_path_segments]
-    home = pathlib.Path.home()
-    long_paths = [home/path for path in short_paths]
-    return long_paths
 
 
 class ConfigError(Exception):
@@ -101,6 +89,17 @@ class ConfigNotFound(Exception):
     pass
 
 
+def config_locations():
+    short_path_segments = [['.cphelper.json'],
+                           ['.config', 'cphelper.json'],
+                           ['.config', 'cphelper', 'config.json']]
+    short_paths = [pathlib.PurePath(*segments)
+                   for segments in short_path_segments]
+    home = pathlib.Path.home()
+    long_paths = [home/path for path in short_paths]
+    return long_paths
+
+
 def get_config():
     locations = config_locations()
     for location in locations:
@@ -159,7 +158,7 @@ def execute(command, take_input=False, diff=False):
     return proc.returncode
 
 
-if __name__ == "__main__":
+def executor():
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("file", help="file you want to run")
