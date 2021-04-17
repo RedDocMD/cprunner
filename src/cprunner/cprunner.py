@@ -90,9 +90,9 @@ class ConfigNotFound(Exception):
 
 
 def config_locations():
-    short_path_segments = [['.cphelper.json'],
-                           ['.config', 'cphelper.json'],
-                           ['.config', 'cphelper', 'config.json']]
+    short_path_segments = [['.cprunner.json'],
+                           ['.config', 'cprunner.json'],
+                           ['.config', 'cprunner', 'config.json']]
     short_paths = [pathlib.PurePath(*segments)
                    for segments in short_path_segments]
     home = pathlib.Path.home()
