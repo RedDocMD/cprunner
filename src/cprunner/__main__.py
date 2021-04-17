@@ -1,5 +1,5 @@
-import run
+import cprunner
 
 
 if __name__ == "__main__":
-    run.executor()
+    cprunner.executor()

@@ -17,7 +17,7 @@ setuptools.setup(
     },
     license='GPLv3',
     classifiers=[
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3",
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Topic :: Competitive Programming :: Build Tools",
@@ -25,13 +25,13 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=[
         "termcolor"
     ],
     entry_points={
         'console_scripts': [
-            'cpr=cprunner.run:executor'
+            'cpr=cprunner.cprunner:executor'
         ]
     }
 )
