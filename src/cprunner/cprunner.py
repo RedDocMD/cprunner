@@ -9,6 +9,7 @@ import tempfile
 import shlex
 import difflib
 import io
+import pickle
 from termcolor import colored
 
 
@@ -87,6 +88,41 @@ class Config:
 
 class ConfigNotFound(Exception):
     pass
+
+
+class CacheEntry:
+    def __init__(self, filename, given_inp, exp_out, timestamp):
+        self.filename = filename
+        self.given_inp = given_inp
+        self.exp_out = exp_out
+        self.timestamp = timestamp
+
+    def __str__(self):
+        return f'Entry => filename: {self.filename}, timestamp: {self.timestamp}'
+
+
+class Cache:
+    _entry_lim = 100
+    _cache_file = pathlib.Path.home() / pathlib.PurePath('.cprunner.cache')
+
+    def __init__(self):
+        self.entries = {}
+
+    def __enter__(self):
+        self._read_from_disk()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._write_to_disk()
+
+    def _read_from_disk(self):
+        with open(Cache._cache_file) as f:
+            cache = pickle.load(f)
+            self.entries = cache.entries
+
+    def _write_to_disk(self):
+        with open(Cache._cache_file, 'w') as f:
+            pickle.dump(self, f)
 
 
 def config_locations():
