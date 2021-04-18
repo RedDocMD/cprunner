@@ -10,6 +10,7 @@ import shlex
 import difflib
 import io
 import pickle
+from datetime import datetime
 from termcolor import colored
 
 
@@ -91,14 +92,10 @@ class ConfigNotFound(Exception):
 
 
 class CacheEntry:
-    def __init__(self, filename, given_inp, exp_out, timestamp):
-        self.filename = filename
+    def __init__(self, given_inp, exp_out, timestamp):
         self.given_inp = given_inp
         self.exp_out = exp_out
         self.timestamp = timestamp
-
-    def __str__(self):
-        return f'Entry => filename: {self.filename}, timestamp: {self.timestamp}'
 
 
 class Cache:
@@ -123,6 +120,23 @@ class Cache:
     def _write_to_disk(self):
         with open(Cache._cache_file, 'w') as f:
             pickle.dump(self, f)
+
+    def __getitem__(self, filename):
+        if filename in self.entries:
+            return self.entries[filename]
+        else:
+            return None
+
+    def save(self, filename, given_inp, exp_out=None):
+        timestamp = datetime.today()
+        entry = CacheEntry(given_inp, exp_out, timestamp)
+        if filename not in self.entries and len(self.entries) >= Cache._entry_lim:
+                items = list(self.entries.items)
+                items.sort(key=lambda it: it[1].timestamp)
+                rem_key = items[0][0]
+                del self.entries[rem_key]
+        self.entries[filename] = entry
+        
 
 
 def config_locations():
