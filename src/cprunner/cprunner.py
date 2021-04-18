@@ -135,12 +135,11 @@ class Cache:
         timestamp = datetime.today()
         entry = CacheEntry(given_inp, exp_out, timestamp)
         if filename not in self.entries and len(self.entries) >= Cache._entry_lim:
-                items = list(self.entries.items)
-                items.sort(key=lambda it: it[1].timestamp)
-                rem_key = items[0][0]
-                del self.entries[rem_key]
+            items = list(self.entries.items)
+            items.sort(key=lambda it: it[1].timestamp)
+            rem_key = items[0][0]
+            del self.entries[rem_key]
         self.entries[filename] = entry
-        
 
 
 def config_locations():
@@ -171,9 +170,9 @@ def key_comb():
         return 'Ctrl + D'
 
 
-def perform_diff(obtained_output, filename, cache):
+def perform_diff(obtained_output, filename, cache, read_cache):
     entry = None
-    if cache is not None:
+    if read_cache:
         entry = cache[filename]
     if entry is None or entry.exp_out is None:
         print(
@@ -198,17 +197,18 @@ def perform_diff(obtained_output, filename, cache):
     return expected_output
 
 
-def execute(command, filename, take_input=False, diff=False, cache=None):
+def execute(command, filename, cache, read_cache, take_input=False, diff=False):
     proc = subprocess.Popen(shlex.split(command), text=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     save_entry = False
     if take_input:
         entry = None
-        if cache is not None:
+        if read_cache:
             entry = cache[filename]
         if entry is None:
-            print(colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
+            print(
+                colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
             inp = sys.stdin.read()
             save_entry = True
         else:
@@ -230,10 +230,10 @@ def execute(command, filename, take_input=False, diff=False, cache=None):
 
     exp_out = None
     if diff:
-        exp_out = perform_diff(out, filename, cache)
+        exp_out = perform_diff(out, filename, cache, read_cache)
         save_entry = True
-    
-    if cache and save_entry:
+
+    if save_entry:
         cache.save(filename, inp, exp_out)
 
     return proc.returncode
@@ -243,6 +243,8 @@ def executor():
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("file", help="file you want to run")
+        parser.add_argument(
+            "-i", "--ignore", help="Ignore the cache entry for this file", action='store_true')
         runtype_group = parser.add_mutually_exclusive_group()
         runtype_group.add_argument(
             "-r", "--run", help="Just run the code (default)", action="store_true")
@@ -262,7 +264,8 @@ def executor():
                 last = i == len(lang.commands) - 1
                 diff = args.diff and last
                 actual_command = command(filename_abs)
-                ret_code = execute(actual_command, filename_abs,last, diff, cache)
+                ret_code = execute(
+                    actual_command, filename_abs, cache, not args.ignore, last, diff)
                 if ret_code != 0:
                     break
     except ConfigNotFound:
