@@ -38,16 +38,17 @@ cpr -d A.cpp
 ## Usage
 
 ```shell
-❯ cpr -h
-usage: cpr [-h] [-r | -d] file
+❯ python src/cprunner -h                                    
+usage: cprunner [-h] [-i] [-r | -d] file
 
 positional arguments:
-  file        file you want to run
+  file          file you want to run
 
 optional arguments:
-  -h, --help  show this help message and exit
-  -r, --run   Just run the code (default)
-  -d, --diff  Run the code and diff with expected output
+  -h, --help    show this help message and exit
+  -i, --ignore  Ignore the cache entry for this file
+  -r, --run     Just run the code (default)
+  -d, --diff    Run the code and diff with expected output
 ```
 
 ## Configuration
@@ -71,10 +72,13 @@ The config file is of the following format (example [here](./config.json)):
 ```json
 {
   "name1": {
-    "ext": ["ext1", "ext2" ...],
-    "command": ["command1", "command2", ... ]
+    "ext": ["ext1", "ext2", "ext3"],
+    "command": ["command1", "command2"]
   },
-  "name2" : ...
+  "name2" : {
+    "ext": ["ext4", "ext5"],
+    "command": ["command3"]
+  }
 }
 ```
 
@@ -89,6 +93,10 @@ For each command in the `command` array, the following placeholders are defined:
 - `fileDir`: The directory of the file which is passed as arg.
 
 A placeholder can be used as `${placeholder}`.
+
+## Cache
+
+CP Runner caches the inputs given by the user for the last 100 unique files it was run on. On subsequent runs, it fetches the input from its cache instead of asking the user for input. This expedites the debugging process. The cache is *presistent*. To ignore the cache entry and provide input again, pass the `-i` flag.
 
 ## Platforms
 

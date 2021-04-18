@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setuptools.setup(
     name='cprunner',
-    version="0.1.1",
+    version="0.1.2",
     author="Deep Majumder",
     author_email="deep.majumder2019@gmail.com",
     description="A helper script to run competitive programs and diff output",

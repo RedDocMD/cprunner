@@ -9,6 +9,8 @@ import tempfile
 import shlex
 import difflib
 import io
+import pickle
+from datetime import datetime
 from termcolor import colored
 
 
@@ -89,6 +91,57 @@ class ConfigNotFound(Exception):
     pass
 
 
+class CacheEntry:
+    def __init__(self, given_inp, exp_out, timestamp):
+        self.given_inp = given_inp
+        self.exp_out = exp_out
+        self.timestamp = timestamp
+
+    def __str__(self):
+        return f'CacheEntry: {self.timestamp}'
+
+
+class Cache:
+    _entry_lim = 100
+    _cache_file = pathlib.Path.home() / pathlib.PurePath('.cprunner.cache')
+
+    def __init__(self):
+        self.entries = {}
+
+    def __enter__(self):
+        self._read_from_disk()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._write_to_disk()
+
+    def _read_from_disk(self):
+        if Cache._cache_file.exists():
+            with open(Cache._cache_file, 'rb') as f:
+                cache = pickle.load(f)
+                self.entries = cache.entries
+
+    def _write_to_disk(self):
+        with open(Cache._cache_file, 'wb') as f:
+            pickle.dump(self, f)
+
+    def __getitem__(self, filename):
+        if filename in self.entries:
+            return self.entries[filename]
+        else:
+            return None
+
+    def save(self, filename, given_inp, exp_out=None):
+        timestamp = datetime.today()
+        entry = CacheEntry(given_inp, exp_out, timestamp)
+        if filename not in self.entries and len(self.entries) >= Cache._entry_lim:
+            items = list(self.entries.items)
+            items.sort(key=lambda it: it[1].timestamp)
+            rem_key = items[0][0]
+            del self.entries[rem_key]
+        self.entries[filename] = entry
+
+
 def config_locations():
     short_path_segments = [['.cprunner.json'],
                            ['.config', 'cprunner.json'],
@@ -117,10 +170,19 @@ def key_comb():
         return 'Ctrl + D'
 
 
-def perform_diff(obtained_output):
-    print(
-        colored(f'\nEnter the expected output (then hit {key_comb()}):', 'yellow'))
-    expected_output = sys.stdin.read()
+def perform_diff(obtained_output, filename, cache, read_cache):
+    entry = None
+    if read_cache:
+        entry = cache[filename]
+    if entry is None or entry.exp_out is None:
+        print(
+            colored(f'\nEnter the expected output (then hit {key_comb()}):', 'yellow'))
+        expected_output = sys.stdin.read()
+    else:
+        expected_output = entry.exp_out
+        print(colored(f'\nTaking expected output as', 'yellow'))
+        print(expected_output)
+
     split_obtained = [s + '\n' for s in obtained_output.split('\n')]
     split_expected = [s + '\n' for s in expected_output.split('\n')]
     diff_stream = io.StringIO()
@@ -132,17 +194,30 @@ def perform_diff(obtained_output):
         print(diff_contents)
     else:
         print(colored('\nNo Mismatch found!', 'green'))
+    return expected_output
 
 
-def execute(command, take_input=False, diff=False):
+def execute(command, filename, cache, read_cache, take_input=False, diff=False):
     proc = subprocess.Popen(shlex.split(command), text=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
+    save_entry = False
     if take_input:
-        print(colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
-        inp = sys.stdin.read()
-        proc.stdin.write(inp)
+        entry = None
+        if read_cache:
+            entry = cache[filename]
+        if entry is None:
+            print(
+                colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
+            inp = sys.stdin.read()
+            save_entry = True
+        else:
+            inp = entry.given_inp
+            print(colored('Taking input as:', 'yellow'))
+            print(inp, end='')
 
+    if take_input:
+        proc.stdin.write(inp)
     out, err = proc.communicate()
 
     if len(out) > 0:
@@ -153,8 +228,13 @@ def execute(command, take_input=False, diff=False):
         print(err)
     proc.stdin.close()
 
+    exp_out = None
     if diff:
-        perform_diff(out)
+        exp_out = perform_diff(out, filename, cache, read_cache)
+        save_entry = True
+
+    if save_entry:
+        cache.save(filename, inp, exp_out)
 
     return proc.returncode
 
@@ -163,6 +243,8 @@ def executor():
     try:
         parser = argparse.ArgumentParser()
         parser.add_argument("file", help="file you want to run")
+        parser.add_argument(
+            "-i", "--ignore", help="Ignore the cache entry for this file", action='store_true')
         runtype_group = parser.add_mutually_exclusive_group()
         runtype_group.add_argument(
             "-r", "--run", help="Just run the code (default)", action="store_true")
@@ -177,13 +259,15 @@ def executor():
 
         ext = filename_abs.suffix[1:]
         lang = config[ext]
-        for (i, command) in enumerate(lang.commands):
-            last = i == len(lang.commands) - 1
-            diff = args.diff and last
-            actual_command = command(filename_abs)
-            ret_code = execute(actual_command, last, diff)
-            if ret_code != 0:
-                break
+        with Cache() as cache:
+            for (i, command) in enumerate(lang.commands):
+                last = i == len(lang.commands) - 1
+                diff = args.diff and last
+                actual_command = command(filename_abs)
+                ret_code = execute(
+                    actual_command, filename_abs, cache, not args.ignore, last, diff)
+                if ret_code != 0:
+                    break
     except ConfigNotFound:
         print(colored('No config file found', 'red'))
     except ConfigError as e:
