@@ -97,6 +97,9 @@ class CacheEntry:
         self.exp_out = exp_out
         self.timestamp = timestamp
 
+    def __str__(self):
+        return f'CacheEntry: {self.timestamp}'
+
 
 class Cache:
     _entry_lim = 100
@@ -113,12 +116,13 @@ class Cache:
         self._write_to_disk()
 
     def _read_from_disk(self):
-        with open(Cache._cache_file) as f:
-            cache = pickle.load(f)
-            self.entries = cache.entries
+        if Cache._cache_file.exists():
+            with open(Cache._cache_file, 'rb') as f:
+                cache = pickle.load(f)
+                self.entries = cache.entries
 
     def _write_to_disk(self):
-        with open(Cache._cache_file, 'w') as f:
+        with open(Cache._cache_file, 'wb') as f:
             pickle.dump(self, f)
 
     def __getitem__(self, filename):
@@ -167,10 +171,19 @@ def key_comb():
         return 'Ctrl + D'
 
 
-def perform_diff(obtained_output):
-    print(
-        colored(f'\nEnter the expected output (then hit {key_comb()}):', 'yellow'))
-    expected_output = sys.stdin.read()
+def perform_diff(obtained_output, filename, cache):
+    entry = None
+    if cache is not None:
+        entry = cache[filename]
+    if entry is None or entry.exp_out is None:
+        print(
+            colored(f'\nEnter the expected output (then hit {key_comb()}):', 'yellow'))
+        expected_output = sys.stdin.read()
+    else:
+        expected_output = entry.exp_out
+        print(colored(f'\nTaking expected output as', 'yellow'))
+        print(expected_output)
+
     split_obtained = [s + '\n' for s in obtained_output.split('\n')]
     split_expected = [s + '\n' for s in expected_output.split('\n')]
     diff_stream = io.StringIO()
@@ -182,17 +195,29 @@ def perform_diff(obtained_output):
         print(diff_contents)
     else:
         print(colored('\nNo Mismatch found!', 'green'))
+    return expected_output
 
 
-def execute(command, take_input=False, diff=False):
+def execute(command, filename, take_input=False, diff=False, cache=None):
     proc = subprocess.Popen(shlex.split(command), text=True, stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
+    save_entry = False
     if take_input:
-        print(colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
-        inp = sys.stdin.read()
-        proc.stdin.write(inp)
+        entry = None
+        if cache is not None:
+            entry = cache[filename]
+        if entry is None:
+            print(colored(f"Enter the input (then hit {key_comb()}):", 'yellow'))
+            inp = sys.stdin.read()
+            save_entry = True
+        else:
+            inp = entry.given_inp
+            print(colored('Taking input as:', 'yellow'))
+            print(inp, end='')
 
+    if take_input:
+        proc.stdin.write(inp)
     out, err = proc.communicate()
 
     if len(out) > 0:
@@ -203,8 +228,13 @@ def execute(command, take_input=False, diff=False):
         print(err)
     proc.stdin.close()
 
+    exp_out = None
     if diff:
-        perform_diff(out)
+        exp_out = perform_diff(out, filename, cache)
+        save_entry = True
+    
+    if cache and save_entry:
+        cache.save(filename, inp, exp_out)
 
     return proc.returncode
 
@@ -227,13 +257,14 @@ def executor():
 
         ext = filename_abs.suffix[1:]
         lang = config[ext]
-        for (i, command) in enumerate(lang.commands):
-            last = i == len(lang.commands) - 1
-            diff = args.diff and last
-            actual_command = command(filename_abs)
-            ret_code = execute(actual_command, last, diff)
-            if ret_code != 0:
-                break
+        with Cache() as cache:
+            for (i, command) in enumerate(lang.commands):
+                last = i == len(lang.commands) - 1
+                diff = args.diff and last
+                actual_command = command(filename_abs)
+                ret_code = execute(actual_command, filename_abs,last, diff, cache)
+                if ret_code != 0:
+                    break
     except ConfigNotFound:
         print(colored('No config file found', 'red'))
     except ConfigError as e:
