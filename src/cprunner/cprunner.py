@@ -9,7 +9,6 @@ import tempfile
 import shlex
 import difflib
 import io
-import pickle
 from datetime import datetime
 from termcolor import colored
 
@@ -101,6 +100,17 @@ class CacheEntry:
         return f'CacheEntry: {self.timestamp}'
 
 
+class CacheEntryEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, CacheEntry):
+            return {
+                'given_inp': obj.given_inp,
+                'exp_out': obj.exp_out,
+                'timestamp': obj.timestamp.isoformat()
+            }
+        return json.JSONEncoder.default(self, obj)
+
+
 class Cache:
     _entry_lim = 100
     _cache_file = pathlib.Path.home() / pathlib.PurePath('.cprunner.cache')
@@ -117,13 +127,19 @@ class Cache:
 
     def _read_from_disk(self):
         if Cache._cache_file.exists():
-            with open(Cache._cache_file, 'rb') as f:
-                cache = pickle.load(f)
-                self.entries = cache.entries
+            with open(Cache._cache_file, 'r') as f:
+                ob = json.load(f)
+                for name in ob:
+                    val = ob[name]
+                    entry = CacheEntry(
+                        val['given_inp'], val['exp_out'], datetime.fromisoformat(val['timestamp']))
+                    self.entries[pathlib.PurePath(name)] = entry
 
     def _write_to_disk(self):
-        with open(Cache._cache_file, 'wb') as f:
-            pickle.dump(self, f)
+        with open(Cache._cache_file, 'w') as f:
+            str_entries = {str(key): val for (key, val)
+                           in self.entries.items()}
+            json.dump(str_entries, f, cls=CacheEntryEncoder)
 
     def __getitem__(self, filename):
         if filename in self.entries:
